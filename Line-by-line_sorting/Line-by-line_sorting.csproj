@@ -6,4 +6,8 @@
     <RootNamespace>Line_by_line_sorting</RootNamespace>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Line-by-line_sorting.Domain\Line-by-line_sorting.Domain.csproj" />
+  </ItemGroup>
+
 </Project>
