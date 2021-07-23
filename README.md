@@ -1,3 +1,3 @@
-# Line-by-line_sorting
+# Line by line sorting
 
 В данной программе используется быстрая сортировка
