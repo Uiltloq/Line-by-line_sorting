@@ -7,6 +7,64 @@ namespace Line_by_line_sorting.Domain
 {
     public static class LblSorting
     {
+        public static void QSortFile() { }
+
+        private static void Split(string path)
+        {
+            int splitNumber = 1;
+            StreamWriter sw = new StreamWriter(string.Format("split{0:d5}.txt",splitNumber)); //TODO: Проверить
+            using (StreamReader sr = new StreamReader(path))
+            {
+                while (sr.Peek() >= 0)
+                {
+                    // Copy a line
+                    sw.WriteLine(sr.ReadLine());
+
+                    // If the file is big, then make a new split,
+                    // however if this was the last line then don't bother
+                    if (sw.BaseStream.Length > 100000000 && sr.Peek() >= 0)
+                    {
+                        sw.Close();
+                        splitNumber++;
+                        sw = new StreamWriter(string.Format("test{0:d5}.txt", splitNumber));
+                    }
+                }
+            }
+            sw.Close();
+        }
+
+        private static void SortPiece()
+        {
+            foreach (string path in Directory.GetFiles(@"C:\Users\god\source\repos\Line-by-line_sorting\Line-by-line_sorting\bin\Debug\net5.0", "split*.txt"))
+            {
+                // Read all lines into an array
+                string[] contents = File.ReadAllLines(path);
+                // Sort the in-memory array
+                Array.Sort(contents);
+                // Create the 'sorted' filename
+                string newpath = path.Replace("split", "sorted");
+                // Write it
+                File.WriteAllLines(newpath, contents);
+                // Delete the unsorted chunk
+                File.Delete(path);
+                // Free the in-memory sorted array
+                contents = null;
+                GC.Collect();
+            }
+        }
+
+        private static void Merge()
+        {
+
+        }
+
+
+
+
+
+
+
+        /*
         /// <summary>
         /// Метод для создания отсортированного файла
         /// </summary>
@@ -97,5 +155,6 @@ namespace Line_by_line_sorting.Domain
 
             return array;
         }
+    */
     }
 }
