@@ -17,11 +17,8 @@ namespace Line_by_line_sorting.Domain
             {
                 while (sr.Peek() >= 0)
                 {
-                    // Copy a line
                     sw.WriteLine(sr.ReadLine());
 
-                    // If the file is big, then make a new split,
-                    // however if this was the last line then don't bother
                     if (sw.BaseStream.Length > 100000000 && sr.Peek() >= 0)
                     {
                         sw.Close();
@@ -35,19 +32,13 @@ namespace Line_by_line_sorting.Domain
 
         private static void SortPiece()
         {
-            foreach (string path in Directory.GetFiles(@"C:\Users\god\source\repos\Line-by-line_sorting\Line-by-line_sorting\bin\Debug\net5.0", "split*.txt"))
+            foreach (string path in Directory.GetFiles(@"", "split*.txt"))
             {
-                // Read all lines into an array
                 string[] contents = File.ReadAllLines(path);
-                // Sort the in-memory array
                 Array.Sort(contents);
-                // Create the 'sorted' filename
                 string newpath = path.Replace("split", "sorted");
-                // Write it
                 File.WriteAllLines(newpath, contents);
-                // Delete the unsorted chunk
                 File.Delete(path);
-                // Free the in-memory sorted array
                 contents = null;
                 GC.Collect();
             }
