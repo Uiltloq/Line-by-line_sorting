@@ -40,9 +40,9 @@ namespace Line_by_line_sorting
         static void Create()
         {
             Console.Write("[>] Укажите количество строк: ");
-            int rowCount = Convert.ToInt32(Console.ReadLine());
+            ulong rowCount = Convert.ToUInt64(Console.ReadLine());
             Console.Write("[>] Укажите максимальную длину этих строк: ");
-            int rowLength = Convert.ToInt32(Console.ReadLine());
+            ulong rowLength = Convert.ToUInt64(Console.ReadLine());
 
             GenerateTestFile.GenerateFile(rowCount, rowLength);
             Console.WriteLine("[+] Генерация файла завершена");

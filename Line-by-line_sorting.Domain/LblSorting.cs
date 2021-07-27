@@ -1,151 +1,160 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
-using System.Linq;
 
 namespace Line_by_line_sorting.Domain
 {
     public static class LblSorting
     {
-        public static void QSortFile() { }
+        //Директория где будут все файлы (split, sorted)
+        private static readonly string directoryFiles = Path.GetDirectoryName(Process.GetCurrentProcess().MainModule.FileName);
+        private static readonly string patternSearchSplit = "split*.txt";
+        private static readonly string patternSearchSort = "sorted*.txt";
 
-        private static void Split(string path)
+        public static void QSortFile(string path = "test.txt")
+        {
+            //Разбиваем файл на части, взависимости от длины строки
+            Split(path, 100000);
+            //Сортируем массивы строк в каждом разбитом файле
+            SortPiece();
+            //Соединяем отсортированные файлы (Массивы) в один файл
+            Merge(path);
+        }
+
+        /// <summary>
+        /// Метод для разделения файла на маленькие кусочки
+        /// </summary>
+        /// <param name="path">Путь файла</param>
+        /// <param name="size">Максимальный размер одного файла</param>
+        private static void Split(string path, long size)
         {
             int splitNumber = 1;
-            StreamWriter sw = new StreamWriter(string.Format("split{0:d5}.txt",splitNumber)); //TODO: Проверить
-            using (StreamReader sr = new StreamReader(path))
+            StreamWriter sw = new StreamWriter(string.Format("split{0:d5}.txt", splitNumber));
+            using (StreamReader sr = new StreamReader(path, false))
             {
+                string line = null;
                 while (sr.Peek() >= 0)
                 {
-                    sw.WriteLine(sr.ReadLine());
+                    if ((line = sr.ReadLine()) != string.Empty)
+                        sw.WriteLine(line);
 
-                    if (sw.BaseStream.Length > 100000000 && sr.Peek() >= 0)
+                    if (sw.BaseStream.Length > size && sr.Peek() >= 0)
                     {
                         sw.Close();
                         splitNumber++;
-                        sw = new StreamWriter(string.Format("test{0:d5}.txt", splitNumber));
+                        sw = new StreamWriter(string.Format("split{0:d5}.txt", splitNumber));
                     }
                 }
             }
             sw.Close();
         }
 
+        /// <summary>
+        /// Метод для сортировки файлов (split*.txt)
+        /// </summary>
         private static void SortPiece()
         {
-            foreach (string path in Directory.GetFiles(@"", "split*.txt"))
+            foreach (string path in Directory.GetFiles(directoryFiles, patternSearchSplit))
             {
                 string[] contents = File.ReadAllLines(path);
                 Array.Sort(contents);
                 string newpath = path.Replace("split", "sorted");
                 File.WriteAllLines(newpath, contents);
                 File.Delete(path);
-                contents = null;
-                GC.Collect();
             }
         }
 
-        private static void Merge()
+        static void Merge(string path)
         {
+            string[] paths = Directory.GetFiles(directoryFiles, patternSearchSort);
+            int chunks = paths.Length;
+            int recordsize = 100; // размер записи
+            int maxusage = 500000000; // максимальное использование памяти (около 50 мб)
+            int buffersize = maxusage / chunks; // размер в байтах каждого буфера
+            double recordoverhead = 7.5;
+            int bufferlen = (int)(buffersize / recordsize / recordoverhead); // количество записей в каждом буфере
 
-        }
+            // Открываем файлы
+            StreamReader[] readers = new StreamReader[chunks];
+            for (int i = 0; i < chunks; i++)
+                readers[i] = new StreamReader(paths[i]);
 
+            // Создаем очередь
+            Queue<string>[] queues = new Queue<string>[chunks];
+            for (int i = 0; i < chunks; i++)
+                queues[i] = new Queue<string>(bufferlen);
 
+            // Заполняем очередь
+            for (int i = 0; i < chunks; i++)
+                AddQueue(queues[i], readers[i], bufferlen);
 
+            // Слияние файлов
+            StreamWriter sw = new StreamWriter(path);
 
-
-
-
-        /*
-        /// <summary>
-        /// Метод для создания отсортированного файла
-        /// </summary>
-        /// <param name="path">Путь не отсортированного файла</param>
-        /// <param name="pathOut">Путь выходного файла</param>
-        public static void QSortFile(string path = "test.txt", string pathOut = "out.txt")
-        {
-            
-                var lines = new List<string>();
-                if (!File.Exists(path))
+            int lowest_index, j;
+            string lowest_value;
+            while (true)
+            {
+                lowest_index = -1;
+                lowest_value = string.Empty;
+                //Найти часть с наименьшим значением
+                for (j = 0; j < chunks; j++)
                 {
-                    throw new FileNotFoundException();
-                }
-                using (StreamReader file = new StreamReader(path))
-                {
-                    string line;
-                    while ((line = file.ReadLine()) != null)
+                    if (queues[j] != null)
                     {
-                        lines.Add(line);
+                        // Проверяем 
+                        if (lowest_index < 0 || string.Compare(queues[j].Peek(), lowest_value, StringComparison.CurrentCulture) < 0)
+                        {
+                            lowest_index = j;
+                            lowest_value = queues[j].Peek();
+                        }
                     }
-                    file.Close();
                 }
 
-                var a = QuickSort(lines.ToArray());
-                File.WriteAllLines(pathOut, a.Select(i => i.ToString()).ToArray());
-            
-        }
-        /// <summary>
-        /// Метод для получения массива быстрой сортировки
-        /// </summary>
-        /// <param name="array">Массив строк</param>
-        /// <returns>Отсортированный массив строк</returns>
-        public static string[] QuickSort(string[] array)
-        {
-            return QuickSort(array, 0, array.Length - 1);
-        }
-        /// <summary>
-        /// Метод перемещения
-        /// </summary>
-        /// <param name="a"></param>
-        /// <param name="b"></param>
-        static void Swap(ref string a, ref string b)
-        {
-            var tmp = a;
-            a = b;
-            b = tmp;
-        }
-        /// <summary>
-        /// Метод для поиска опоры
-        /// </summary>
-        /// <param name="array">Массив строк</param>
-        /// <param name="minIndex">Минимальный индекс массива</param>
-        /// <param name="maxIndex">Максимальный индекс массива</param>
-        /// <returns>Индекс опоры</returns>
-        static int Partition(string[] array, int minIndex, int maxIndex)
-        {
-            var pivot = minIndex - 1;
-            for (var i = minIndex; i < maxIndex; i++)
-            {
-                if (string.Compare(array[i], array[maxIndex], StringComparison.Ordinal) < 0)
+                if (lowest_index == -1)
+                    break;
+
+                // Ввод
+                sw.WriteLine(lowest_value);
+
+                // Изъятие из очереди
+                queues[lowest_index].Dequeue();
+
+                //Если очередь закончилась
+                if (queues[lowest_index].Count == 0)
                 {
-                    pivot++;
-                    Swap(ref array[pivot], ref array[i]);
+                    // Пополнение очереди
+                    AddQueue(queues[lowest_index], readers[lowest_index], bufferlen);
+                    // Есть ли еще записи
+                    if (queues[lowest_index].Count == 0)
+                    {
+                        queues[lowest_index] = null;
+                    }
                 }
             }
+            sw.Close();
 
-            pivot++;
-            Swap(ref array[pivot], ref array[maxIndex]);
-            return pivot;
+            // Удаляем временные файлы
+            for (int i = 0; i < chunks; i++)
+            {
+                readers[i].Close();
+                File.Delete(paths[i]);
+            }
         }
         /// <summary>
-        /// Быстрая сортировка
+        /// Метод добавления в очередь
         /// </summary>
-        /// <param name="array"></param>
-        /// <param name="minIndex"></param>
-        /// <param name="maxIndex"></param>
-        /// <returns></returns>
-        static string[] QuickSort(string[] array, int minIndex, int maxIndex)
+        /// <param name="queue">Очередь</param>
+        /// <param name="file">файл</param>
+        /// <param name="records">Количество записей в очереди</param>
+        private static void AddQueue(Queue<string> queue, StreamReader file, int records)
         {
-            if (minIndex >= maxIndex)
+            for (int i = 0; i < records; i++)
             {
-                return array;
+                if (file.Peek() < 0) break;
+                queue.Enqueue(file.ReadLine());
             }
-
-            var pivotIndex = Partition(array, minIndex, maxIndex);
-            QuickSort(array, minIndex, pivotIndex - 1);
-            QuickSort(array, pivotIndex + 1, maxIndex);
-
-            return array;
         }
-    */
     }
 }
